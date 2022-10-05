@@ -11,13 +11,16 @@ user_agent = "totally not a college board data scraper"
 subject_id = 8; # ID of the subject of the specific class we are taking (8 is the ID for computer science)
 education_per = 24; # Not fully sure what this is yet, I'm still working on understanding what college board means by this
 
-# Take a look at the .sh file.
-# I had to paste the curl request in here because it broke when I tried to insert the json into python requests
-# If you can get it working without the stupid bash file, please let me know
-os.system("bash ap.sh")
 
-f = open("api.json", "r")
-stuff = f.read() 
+endpoint = "https://apc-api-production.collegeboard.org/fym/graphql"
+stuff = requests.post(endpoint.split("fym/graphql")[0], json={"query":"query courseOutline($subjectId: String, $educationPeriod: String, $filter: String) {\n courseOutline(subjectId: $subjectId, educationPeriod: $educationPeriod, filter: $filter) {\n id: subjectId\n educationPeriod\n ppcTagPair\n subunitLabel\n widgetTagColumn\n widgetTagColumnLabel\n title\n description\n searchResultsTags\n educationPeriod\n unitsLabel\n resources {\n ...resourceFields\n __typename\n }\n units {\n unitId: id\n displayName\n ...n __typename\n }\n ... on AssessmentResource {\n assessmentId\n resourceTypeDetails\n __typename\n }\n ... on StudentPracticeResource {\n assessmentId\n __typename\n }\n ... on GroupResource {\n description\n url\n __typename\n }\n ... on PracticeQuestionsResource {\n questions {\n index\n accNum\n title\n libraryId\n subjectId\n itemId\n hasAllTopicsCovered\n type\n __typename\n }\n __typename\n }\n __typename\n}\n}", 
+                                                                            "variables":{"subjectId":"8","educationPeriod":"24"},
+                                                                            "operationName":"courseOutline"}, 
+                                                                            headers={"User-agent": user_agent, "Authorization": token})
+                                                                            # had to deal with a bunch of graphql errors due to a malformed string that was my query
+                                                                            # hence the existence of the newlineFinder.py
+
+
 # Step one: scan the subject for all assignments:
 
 # Now in stuff we have all of the resources posted by the teacher
@@ -25,7 +28,9 @@ stuff = f.read()
 
 asIDs = [] # blank array for assignments IDs
 
-for thing in json.loads(stuff)["data"]["courseOutline"]["units"]: # sort through each unit and search for tasks
+print(stuff.json()) # somehow broke this ???
+
+for thing in stuff.json()["data"]["courseOutline"]["units"]: # sort through each unit and search for tasks
     for unit in thing["subunits"]: # search each subunit
         for sub in unit["resources"]:
             if sub["__typename"] == "AssessmentResource": # searches for assignments posted by the teacher
